@@ -36,10 +36,7 @@ public sealed class MyPricePlugin : IPriceUpdatePublisher
 }
 ```
 
-必要に応じて次の追加APIも実装できます。
-
-- `IConfigurablePricePlugin` — JSON形式の設定値をKiribellに保存・復元させる
-- `ISettingsPricePlugin` — Kiribellの設定画面から独自設定ダイアログを開く
+必要に応じて `IConfigurablePricePlugin` と `ISettingsPricePlugin` も実装できます。
 
 ## ビルド
 
@@ -54,16 +51,14 @@ dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.J
 - `PriceUpdateBatch.Quotes` のキーには、Kiribellから渡された `Watch.Code` を使用してください。
 - サービス側の銘柄コードへ変換して問い合わせても、Kiribellへ返すときは元の `Watch.Code` に戻します。
 - `ObtainedAt` には取得時点を入れてください。Kiribellは新しいバッチだけを採用します。
-- `Error` が `null` 以外の場合はプラグインエラーとして扱われます。価格データとエラーを同時に返すこともできます。
+- `Error` が `null` 以外の場合はプラグインエラーとして扱われます。
 - Kiribell は監視銘柄変更時に `SetWatches`、開始時に `StartAsync`、停止時に `StopAsync` を呼びます。
 
-## サンプルについて
-
-### JsonFile.Sample
+## JsonFile.Sample
 
 DLLと同じフォルダーの `prices.json` を読みます。外部サービスを使わず、Kiribellとの連携を確認するのに向いています。
 
-### TwelveData.Sample
+## TwelveData.Sample
 
 監視コード `SMP.NVDA` を Twelve Data の `NVDA` として問い合わせ、結果を `SMP.NVDA` としてKiribellへ返します。APIキーはサンプルの設定画面で入力します。APIキーはこのリポジトリには含まれていません。
 

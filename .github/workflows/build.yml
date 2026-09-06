@@ -1,0 +1,22 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build plugin contracts
+        run: dotnet build src/StockBeacon.PluginContracts/StockBeacon.PluginContracts.csproj -c Release
+      - name: Build minimal sample
+        run: dotnet build samples/Kiribell.PricePlugin.Sample/Kiribell.PricePlugin.Sample.csproj -c Release
+      - name: Build JSON file sample
+        run: dotnet build samples/Kiribell.PricePlugin.JsonFile.Sample/Kiribell.PricePlugin.JsonFile.Sample.csproj -c Release
+      - name: Build Twelve Data sample
+        run: dotnet build samples/Kiribell.PricePlugin.TwelveData.Sample/Kiribell.PricePlugin.TwelveData.Sample.csproj -c Release

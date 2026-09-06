@@ -1,0 +1,16 @@
+{
+  "JP.7203": {
+    "LastPrice": 2500,
+    "PreviousClose": 2470,
+    "OpenPrice": 2480,
+    "TodayHigh": 2520,
+    "TodayLow": 2475
+  },
+  "US.AAPL": {
+    "LastPrice": 200.00,
+    "PreviousClose": 198.00,
+    "OpenPrice": 198.50,
+    "TodayHigh": 201.25,
+    "TodayLow": 197.80
+  }
+}
