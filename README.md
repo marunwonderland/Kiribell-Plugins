@@ -1,25 +1,39 @@
 # Kiribell Plugins
 
-Kiribell の価格プラグインを作成するための公開APIとサンプル実装です。
+Kiribell の価格取得を拡張するための公開プラグインAPIとサンプル集です。
 
-## 必要環境
+独自の価格取得処理を Kiribell に組み込みたい場合は、このリポジトリを出発点にできます。
 
-- .NET 10 SDK
-- Kiribell のプラグイン機能に対応したバージョン
-- Twelve Data サンプルの設定画面をビルドする場合は Windows
+## まず読むもの
 
-## 構成
+- [価格プラグイン仕様](docs/PLUGINS.md) — 公開API、本体とのやり取り、エラー、設定UI、読み込み条件など
+- [Twelve Data サンプルから独自プラグインを作る](docs/Kiribell-PricePlugin-Guide.md) — 実働サンプルをベースに独自プラグインを作る手順
 
-- `src/StockBeacon.PluginContracts/` — Kiribell 本体とプラグインの公開契約
-- `samples/Kiribell.PricePlugin.Sample/` — 最小のプラグイン雛形
-- `samples/Kiribell.PricePlugin.JsonFile.Sample/` — `prices.json` を2秒ごとに読む実働サンプル
-- `samples/Kiribell.PricePlugin.TwelveData.Sample/` — Twelve Data APIを使う実働サンプル
+## サンプル
 
-> `StockBeacon.PluginContracts` というアセンブリ名は Kiribell 本体との互換性のため維持しています。
+| サンプル | 用途 |
+| --- | --- |
+| [Kiribell.PricePlugin.Sample](samples/Kiribell.PricePlugin.Sample/) | 最小構成。ゼロから実装したい場合の雛形 |
+| [Kiribell.PricePlugin.JsonFile.Sample](samples/Kiribell.PricePlugin.JsonFile.Sample/) | `prices.json` を読む実働サンプル。Kiribellとの連携確認向け |
+| [Kiribell.PricePlugin.TwelveData.Sample](samples/Kiribell.PricePlugin.TwelveData.Sample/) | Twelve Data APIを利用する実働サンプル。外部API連携の参考実装 |
 
-## 最小実装
+## 最短で動かす
 
-プラグインDLLには、`Kiribell.Plugins.IPriceUpdatePublisher` を実装した **抽象でない型を1つだけ** 含めてください。Kiribell はその型を引数なしで生成します。
+外部サービスなしで確認するなら JsonFile サンプルが簡単です。
+
+```powershell
+dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.JsonFile.Sample.csproj -c Release
+```
+
+生成された `Kiribell.PricePlugin.JsonFile.Sample.dll` を Kiribell の **設定 → 拡張機能** で選択し、**外部DLLを有効にする** をオンにします。
+
+同じ出力フォルダーの `prices.json` を編集すると、プラグインが価格をKiribellへ通知します。
+
+詳しい手順は [JsonFile サンプルのREADME](samples/Kiribell.PricePlugin.JsonFile.Sample/README.md) を参照してください。
+
+## 独自プラグインを作る
+
+プラグインは `Kiribell.Plugins.IPriceUpdatePublisher` を実装します。
 
 ```csharp
 public sealed class MyPricePlugin : IPriceUpdatePublisher
@@ -36,37 +50,46 @@ public sealed class MyPricePlugin : IPriceUpdatePublisher
 }
 ```
 
-必要に応じて `IConfigurablePricePlugin` と `ISettingsPricePlugin` も実装できます。
+重要な点は次のとおりです。
 
-## ビルド
+- プラグインDLL内の具体的な `IPriceUpdatePublisher` 実装は1つだけにする
+- Kiribell が引数なしで生成できる型にする
+- `PriceUpdateBatch.Quotes` のキーには、Kiribellから受け取った元の `Watch.Code` を使う
+- 外部サービス用に銘柄コードを変換しても、Kiribellへ返すときは元のコードへ戻す
+- APIキーやアクセストークンをDLLへハードコードしない
 
-```powershell
-dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.JsonFile.Sample.csproj -c Release
-```
+詳細は [価格プラグイン仕様](docs/PLUGINS.md) にまとめています。
 
-生成されたプラグインDLLを Kiribell の **設定 → 拡張機能** で選び、**外部DLLを有効にする** をオンにして保存します。
+## 公開API
 
-## 価格通知の基本ルール
+公開契約は [`src/StockBeacon.PluginContracts/`](src/StockBeacon.PluginContracts/) にあります。
 
-- `PriceUpdateBatch.Quotes` のキーには、Kiribellから渡された `Watch.Code` を使用してください。
-- サービス側の銘柄コードへ変換して問い合わせても、Kiribellへ返すときは元の `Watch.Code` に戻します。
-- `ObtainedAt` には取得時点を入れてください。Kiribellは新しいバッチだけを採用します。
-- `Error` が `null` 以外の場合はプラグインエラーとして扱われます。
-- Kiribell は監視銘柄変更時に `SetWatches`、開始時に `StartAsync`、停止時に `StopAsync` を呼びます。
+`StockBeacon.PluginContracts` というアセンブリ名は Kiribell 本体との互換性のため維持しています。
 
-## JsonFile.Sample
+主な型は次のとおりです。
 
-DLLと同じフォルダーの `prices.json` を読みます。外部サービスを使わず、Kiribellとの連携を確認するのに向いています。
+- `IPriceUpdatePublisher`
+- `IConfigurablePricePlugin`
+- `ISettingsPricePlugin`
+- `Watch`
+- `Quote`
+- `PriceUpdateBatch`
 
-## TwelveData.Sample
+## 必要環境
 
-監視コード `SMP.NVDA` を Twelve Data の `NVDA` として問い合わせ、結果を `SMP.NVDA` としてKiribellへ返します。APIキーはサンプルの設定画面で入力します。APIキーはこのリポジトリには含まれていません。
+- .NET 10 SDK
+- Kiribell のプラグイン機能に対応したバージョン
+- Twelve Data サンプルの設定画面をビルドする場合は Windows
 
-Twelve Data の利用条件・料金・レート制限は Twelve Data 側の規約を確認してください。このサンプルは外部サービスの利用を保証・仲介するものではありません。
+## 外部サービスについて
+
+Twelve Data サンプルは、外部APIを利用する価格プラグインの参考実装です。APIキーはリポジトリには含まれていません。
+
+Twelve Dataを含む外部サービスを利用する場合は、各サービスの利用規約、料金、レート制限、データの再配布条件などを利用者自身で確認してください。
 
 ## セキュリティ
 
-プラグインはKiribellと同じユーザー権限で実行されるコードです。信頼できないDLLを読み込まないでください。また、公開するプラグインへAPIキーやアクセストークンをハードコードしないでください。
+Kiribell のプラグインは、Kiribell と同じユーザー権限で実行されるコードです。信頼できないDLLを読み込まないでください。
 
 ## License
 
