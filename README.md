@@ -8,6 +8,7 @@ Kiribell の価格取得を拡張するための公開プラグインAPIとサ�
 
 - [価格プラグイン仕様](docs/PLUGINS.md) — 公開API、本体とのやり取り、エラー、設定UI、読み込み条件など
 - [Twelve Data サンプルから独自プラグインを作る](docs/Kiribell-PricePlugin-Guide.md) — 実働サンプルをベースに独自プラグインを作る手順
+- [AIコーディングエージェントでプラグインを作る](docs/AI-PLUGIN-GUIDE.md) — Codexなどへ渡せる指示テンプレートと安全な作成手順
 
 ## サンプル
 
@@ -60,6 +61,8 @@ public sealed class MyPricePlugin : IPriceUpdatePublisher
 - 外部ライブラリを使う場合は、プラグインDLLだけでなく必要な依存DLLや `.deps.json` などのビルド出力も一緒に配置する
 
 詳細は [価格プラグイン仕様](docs/PLUGINS.md) にまとめています。
+
+CodexなどのAIコーディングエージェントに作成を依頼する場合は、[AIコーディングエージェントでプラグインを作る](docs/AI-PLUGIN-GUIDE.md) に、そのまま渡せる指示テンプレートを用意しています。
 
 ## 公開API
 
