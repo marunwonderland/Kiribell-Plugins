@@ -57,6 +57,7 @@ public sealed class MyPricePlugin : IPriceUpdatePublisher
 - `PriceUpdateBatch.Quotes` のキーには、Kiribellから受け取った元の `Watch.Code` を使う
 - 外部サービス用に銘柄コードを変換しても、Kiribellへ返すときは元のコードへ戻す
 - APIキーやアクセストークンをDLLへハードコードしない
+- 外部ライブラリを使う場合は、プラグインDLLだけでなく必要な依存DLLや `.deps.json` などのビルド出力も一緒に配置する
 
 詳細は [価格プラグイン仕様](docs/PLUGINS.md) にまとめています。
 
@@ -91,6 +92,8 @@ Twelve Dataを含む外部サービスを利用する場合は、各サービス
 
 Kiribell のプラグインは、Kiribell と同じユーザー権限で実行されるコードです。信頼できないDLLを読み込まないでください。
 
+`IConfigurablePricePlugin.ConfigurationJson` はプラグイン設定の受け渡し・保存用であり、秘密情報専用の保管庫ではありません。APIキーなどを扱うプラグインでは、利用するサービスの要件とリスクを確認してください。
+
 ## License
 
-ライセンスは現在未設定です。ライセンスファイルが追加されるまでは、公開されていること自体が再利用許諾を意味するものではありません。
+MIT Licenseです。詳しくは [LICENSE](LICENSE) を参照してください。
