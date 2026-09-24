@@ -1,102 +1,97 @@
 # Kiribell Plugins
 
-Kiribell の価格取得を拡張するための公開プラグインAPIとサンプル集です。
+**Use your own price source with Kiribell.**
 
-独自の価格取得処理を Kiribell に組み込みたい場合は、このリポジトリを出発点にできます。
+Kiribell's standard Japanese stock price data is delayed by approximately 15 minutes.
 
-## まず読むもの
+Price plugins let you connect Kiribell to an API available from your broker or market data service, helping you supplement this limitation when a suitable API is available.
 
-- [価格プラグイン仕様](docs/PLUGINS.md) — 公開API、本体とのやり取り、エラー、設定UI、読み込み条件など
-- [Twelve Data サンプルから独自プラグインを作る](docs/Kiribell-PricePlugin-Guide.md) — 実働サンプルをベースに独自プラグインを作る手順
-- [AIコーディングエージェントでプラグインを作る](docs/AI-PLUGIN-GUIDE.md) — Codexなどへ渡せる指示テンプレートと安全な作成手順
+This repository contains sample plugins, the public plugin API, and guides for building a price plugin for the service you use.
 
-## サンプル
+**日本語版: [README.ja.md](README.ja.md)**
 
-| サンプル | 用途 |
-| --- | --- |
-| [Kiribell.PricePlugin.Sample](samples/Kiribell.PricePlugin.Sample/) | 最小構成。ゼロから実装したい場合の雛形 |
-| [Kiribell.PricePlugin.JsonFile.Sample](samples/Kiribell.PricePlugin.JsonFile.Sample/) | `prices.json` を読む実働サンプル。Kiribellとの連携確認向け |
-| [Kiribell.PricePlugin.TwelveData.Sample](samples/Kiribell.PricePlugin.TwelveData.Sample/) | Twelve Data APIを利用する実働サンプル。外部API連携の参考実装 |
+> [!IMPORTANT]
+> When using a broker or data service API, you must follow the provider's terms of use and API terms.
+> API availability, pricing, rate limits, data latency, and data usage conditions vary by provider.
 
-## 最短で動かす
+## Samples
 
-外部サービスなしで確認するなら JsonFile サンプルが簡単です。
+The easiest way to get started is to try one of the included samples.
 
-```powershell
-dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.JsonFile.Sample.csproj -c Release
-```
+### JsonFile
 
-生成された `Kiribell.PricePlugin.JsonFile.Sample.dll` を Kiribell の **設定 → 拡張機能** で選択し、**外部DLLを有効にする** をオンにします。
+A simple sample that reads prices from `prices.json`.
 
-同じ出力フォルダーの `prices.json` を編集すると、プラグインが価格をKiribellへ通知します。
+It is useful for understanding the minimum structure of a Kiribell price plugin without connecting to an external service.
 
-詳しい手順は [JsonFile サンプルのREADME](samples/Kiribell.PricePlugin.JsonFile.Sample/README.md) を参照してください。
+### Twelve Data
 
-## 独自プラグインを作る
+A sample price plugin that retrieves price data using the Twelve Data API.
 
-プラグインは `Kiribell.Plugins.IPriceUpdatePublisher` を実装します。
+It shows how a Kiribell plugin can connect to an external price data service and is a useful starting point when building your own plugin.
 
-```csharp
-public sealed class MyPricePlugin : IPriceUpdatePublisher
-{
-    public string Name => "My Price Plugin";
-    public event EventHandler<PriceUpdateBatch>? PricesUpdated;
+## Build a plugin for the service you use
 
-    public Task StartAsync(IReadOnlyCollection<Watch> watches, CancellationToken token = default)
-        => Task.CompletedTask;
+If your broker or data service provides an API that you can use, try building a price plugin for it.
 
-    public void SetWatches(IReadOnlyCollection<Watch> watches) { }
+Kiribell provides a public plugin API, samples, and guides to help you get started.
 
-    public Task StopAsync() => Task.CompletedTask;
-}
-```
+### Documentation
 
-重要な点は次のとおりです。
+- [Plugin specification](docs/PLUGINS.md)  
+  Public API, communication with Kiribell, configuration UI, and other plugin requirements.
 
-- プラグインDLL内の具体的な `IPriceUpdatePublisher` 実装は1つだけにする
-- Kiribell が引数なしで生成できる型にする
-- `PriceUpdateBatch.Quotes` のキーには、Kiribellから受け取った元の `Watch.Code` を使う
-- 外部サービス用に銘柄コードを変換しても、Kiribellへ返すときは元のコードへ戻す
-- APIキーやアクセストークンをDLLへハードコードしない
-- 外部ライブラリを使う場合は、プラグインDLLだけでなく必要な依存DLLや `.deps.json` などのビルド出力も一緒に配置する
+- [Price plugin development guide](docs/Kiribell-PricePlugin-Guide.md)  
+  A step-by-step guide based on the Twelve Data sample.
 
-詳細は [価格プラグイン仕様](docs/PLUGINS.md) にまとめています。
+- [Guide for AI coding agents](docs/AI-PLUGIN-GUIDE.md)  
+  Instructions and context you can give to an AI coding agent when asking it to build a Kiribell plugin.
 
-CodexなどのAIコーディングエージェントに作成を依頼する場合は、[AIコーディングエージェントでプラグインを作る](docs/AI-PLUGIN-GUIDE.md) に、そのまま渡せる指示テンプレートを用意しています。
+You can also start from the minimum plugin template included in this repository.
 
-## 公開API
+## Build with an AI coding agent
 
-公開契約は [`src/StockBeacon.PluginContracts/`](src/StockBeacon.PluginContracts/) にあります。
+You don't necessarily have to write the plugin from scratch yourself.
 
-`StockBeacon.PluginContracts` というアセンブリ名は Kiribell 本体との互換性のため維持しています。
+The [Guide for AI coding agents](docs/AI-PLUGIN-GUIDE.md) contains information that can be given to an AI coding agent together with the plugin specification and sample code.
 
-主な型は次のとおりです。
+If the API you want to use has documentation, you can provide that documentation as well and use the existing samples as a reference implementation.
 
-- `IPriceUpdatePublisher`
-- `IConfigurablePricePlugin`
-- `ISettingsPricePlugin`
-- `Watch`
-- `Quote`
-- `PriceUpdateBatch`
+## Public plugin API
 
-## 必要環境
+Kiribell exposes a public API for price plugins.
 
-- .NET 10 SDK
-- Kiribell のプラグイン機能に対応したバージョン
-- Twelve Data サンプルの設定画面をビルドする場合は Windows
+A price plugin can provide price updates to Kiribell through the published interfaces and can provide its own configuration UI when necessary.
 
-## 外部サービスについて
+For the API contract, requirements, and integration details, see:
 
-Twelve Data サンプルは、外部APIを利用する価格プラグインの参考実装です。APIキーはリポジトリには含まれていません。
+**[Plugin specification](docs/PLUGINS.md)**
 
-Twelve Dataを含む外部サービスを利用する場合は、各サービスの利用規約、料金、レート制限、データの再配布条件などを利用者自身で確認してください。
+## Using external APIs
 
-## セキュリティ
+The data available to Kiribell depends on the API and plan provided by the broker or data service you connect.
 
-Kiribell のプラグインは、Kiribell と同じユーザー権限で実行されるコードです。信頼できないDLLを読み込まないでください。
+A price plugin does not by itself guarantee real-time data.
 
-`IConfigurablePricePlugin.ConfigurationJson` はプラグイン設定の受け渡し・保存用であり、秘密情報専用の保管庫ではありません。APIキーなどを扱うプラグインでは、利用するサービスの要件とリスクを確認してください。
+Before using an external API, check the provider's:
+
+- Terms of use
+- API usage terms
+- Pricing
+- Rate limits
+- Data latency
+- Data usage and redistribution conditions
+
+You are responsible for using each external service in accordance with its terms.
+
+## Security
+
+Kiribell plugins run as code on your computer.
+
+Only install plugins from sources you trust. When using third-party plugins, review their source and behavior when possible.
+
+For technical requirements and details about the plugin interface, see the [plugin specification](docs/PLUGINS.md).
 
 ## License
 
-MIT Licenseです。詳しくは [LICENSE](LICENSE) を参照してください。
+See the license information included in this repository.
