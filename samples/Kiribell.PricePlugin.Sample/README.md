@@ -1,15 +1,17 @@
 # Kiribell.PricePlugin.Sample
 
-キリベル価格プラグインの最小雛形です。`SamplePricePlugin` は `IPriceUpdatePublisher` を実装しています。
+A minimal template for a Kiribell price plugin. `SamplePricePlugin` implements `IPriceUpdatePublisher`.
 
-この雛形の `StartAsync` は監視銘柄とキャンセルトークンを受け取るところまでを実装しており、価格取得ループ自体はまだ持っていません。独自プラグインでは `StartAsync` から取得処理を開始し、取得できた価格を `Publish` で通知する実装を追加してください。本体は `ObtainedAt` が新しいバッチだけを一件保持し、次の確認時に反映します。監視銘柄が変わると `SetWatches` が呼ばれ、無効化・終了時には `StopAsync` が呼ばれます。
+**日本語版: [README.ja.md](README.ja.md)**
 
-このままでは価格を返さないため、キリベルで実運用しないでください。
+The template's `StartAsync` accepts the watch list and cancellation token, but it does not yet include a price retrieval loop. In your plugin, start retrieval from `StartAsync` and add code to publish retrieved prices with `Publish`. Kiribell holds one batch at a time, keeping only a batch with a newer `ObtainedAt`, and applies it on its next poll. `SetWatches` is called when the watch list changes; `StopAsync` is called when the plugin is disabled or the application exits.
+
+This template does not return prices and should not be used for production in Kiribell.
 
 ```powershell
 dotnet build samples\Kiribell.PricePlugin.Sample\Kiribell.PricePlugin.Sample.csproj -c Release
 ```
 
-出力された `bin\Release\net10.0\Kiribell.PricePlugin.Sample.dll` を、必要な依存ファイルとともに任意のフォルダーへ配置します。外部ライブラリを追加した場合は、ビルド出力に生成された依存DLLや `.deps.json` なども同じフォルダーに残してください。キリベルの「設定」→「拡張機能」でプラグインDLLを選択し、「外部DLLを有効にする」をオンにします。
+Place the resulting `bin\Release\net10.0\Kiribell.PricePlugin.Sample.dll` in any folder along with required dependency files. If you add external libraries, keep the dependency DLLs and `.deps.json` generated in the build output in the same folder. In Kiribell, open **Settings → Extensions**, select the plugin DLL, and turn on **Enable external DLL**.
 
-詳しいAPI契約、エラー処理、設定UIの実装方法は [`../../docs/PLUGINS.md`](../../docs/PLUGINS.md) を参照してください。
+See the [plugin API contract](../../docs/PLUGINS.md) for API contracts, error handling, and settings UI details.

@@ -1,147 +1,145 @@
-# AIコーディングエージェントでKiribellプラグインを作る
+# Build a Kiribell Plugin with an AI Coding Agent
 
-Kiribellは価格取得部分を外部プラグインとして差し替えられます。
+Kiribell lets you replace price retrieval with an external plugin.
 
-このページは、CodexなどのAIコーディングエージェントに、利用したい証券会社・市場データAPI向けの価格取得プラグインを作らせるためのガイドです。
+This guide helps you ask an AI coding agent such as Codex to build a price plugin for an API provided by your broker or market data service.
+
+**日本語版: [AI-PLUGIN-GUIDE.ja.md](AI-PLUGIN-GUIDE.ja.md)**
 
 > [!IMPORTANT]
-> AIが生成したコードは、そのまま信用して実行せず、内容・利用規約・認証情報の扱いを必ず確認してください。
+> Do not trust and run AI-generated code without review. Always check its behavior, applicable terms, and handling of credentials.
 
-## 先に確認すること
+## Check these points first
 
-対象サービスが、利用者自身によるプログラムからの価格取得を正式に許可しているか確認してください。
+Confirm that the service formally permits you to retrieve prices programmatically. In particular, check:
 
-特に次を確認します。
+- Whether an official API, SDK, RSS feed, or similar option is available
+- Terms for personal and commercial use
+- Conditions for real-time price retrieval
+- Rate limits
+- Conditions for data storage and redistribution
+- Requirements for API keys, access tokens, account information, and other credentials
 
-- 公式API、SDK、RSSなどの提供有無
-- 個人利用・商用利用の条件
-- リアルタイム価格取得の利用条件
-- レート制限
-- データの保存・再配布条件
-- APIキー、アクセストークン、口座情報などの取り扱い条件
+Do not use unofficial scraping or any retrieval method that violates the terms of use.
 
-非公式スクレイピングや、利用規約に反する取得方法は使用しないでください。
+## Prompt template for Codex and other agents
 
-## Codexなどへ渡す指示テンプレート
-
-次の内容をコピーし、`【使用したいデータ提供元】` を書き換えてAIコーディングエージェントへ渡してください。
+Copy the following text, replace `【データ提供元】` with the provider you want to use, and give it to your AI coding agent.
 
 ```text
-Kiribell用の価格取得プラグインを作成してください。
+Create a price retrieval plugin for Kiribell.
 
-Kiribellの公開Plugin SDKはこちらです。
+The public Kiribell Plugin SDK is here:
 https://github.com/marunwonderland/Kiribell-Plugins
 
-まずREADME、docs/PLUGINS.md、docs/Kiribell-PricePlugin-Guide.md、samplesを確認し、現在の公開仕様に従って実装してください。
+First inspect the README, docs/PLUGINS.md, docs/Kiribell-PricePlugin-Guide.md, and samples. Implement against the current published specification.
 
-【使用したいデータ提供元】
-ここに証券会社・API・サービス名を記入してください。
+【Data provider】
+Enter the broker, API, or service name here.
 
-【目的】
-Kiribellの監視銘柄について価格情報を取得し、IPriceUpdatePublisherを実装したプラグインとしてKiribellへ通知してください。
+【Purpose】
+Retrieve price information for Kiribell watch-list symbols and publish it to Kiribell through a plugin implementing IPriceUpdatePublisher.
 
-【実装条件】
-- StockBeacon.PluginContractsをKiribell Plugin SDKの契約アセンブリとして使用する
-- Kiribell.Plugins.IPriceUpdatePublisherを実装する
-- プラグインDLL内のIPriceUpdatePublisher実装クラスは1つだけにする
-- 引数なしで生成できること
-- StartAsyncで初期監視銘柄を受け取る
-- SetWatchesで監視銘柄変更を反映する
-- StopAsyncで通信・タイマー・イベント購読等を確実に終了する
-- PriceUpdateBatchのQuotesキーには必ずKiribellから渡された元のWatch.Codeを使用する
-- API用の銘柄コードへ変換した場合も、返却時には元のWatch.Codeへ戻す
-- 一銘柄の取得失敗でプラグイン全体を停止させない
-- CancellationTokenを適切に扱う
-- APIのレート制限を守る
-- APIキー・パスワード・トークン等をソースコードへハードコードしない
-- 必要ならIConfigurablePricePlugin / ISettingsPricePluginを利用して設定画面を実装する
-- API認証情報を保存する場合は保存場所と安全上の注意をREADMEに明記する
-- 外部NuGetパッケージを使用する場合は、Kiribellで読み込む際に必要な依存DLLや.deps.json等も含めて配置できるようにする
-- 注文機能は実装しない。Kiribellで必要なのは価格取得のみとする
+【Implementation requirements】
+- Use StockBeacon.PluginContracts as the Kiribell Plugin SDK contract assembly
+- Implement Kiribell.Plugins.IPriceUpdatePublisher
+- Include exactly one IPriceUpdatePublisher implementation class in the plugin DLL
+- Make the class instantiable with no arguments
+- Receive the initial watch list in StartAsync
+- Apply watch-list changes in SetWatches
+- Reliably stop communication, timers, event subscriptions, etc. in StopAsync
+- Always use the original Watch.Code received from Kiribell as a key in PriceUpdateBatch.Quotes
+- If converting to an API symbol code, map back to the original Watch.Code when returning the result
+- Do not stop the entire plugin when retrieval for one symbol fails
+- Handle CancellationToken appropriately
+- Follow the API rate limits
+- Do not hard-code API keys, passwords, tokens, etc. in source code
+- Implement a settings screen with IConfigurablePricePlugin / ISettingsPricePlugin if needed
+- If API credentials are saved, document their storage location and security considerations in the README
+- If using external NuGet packages, include required dependency DLLs, .deps.json, etc. in the deployment output so Kiribell can load them
+- Do not implement order functionality; Kiribell only needs price retrieval
 
-【調査】
-実装前に、対象サービスの最新の公式API仕様・利用条件・レート制限を確認してください。
-非公式スクレイピングや利用規約に抵触する方法は使用しないでください。
-正式に価格情報をプログラム取得できない場合は、無理に実装せず、その理由を報告してください。
+【Research】
+Before implementation, check the provider's latest official API specification, terms, and rate limits.
+Do not use unofficial scraping or methods that violate the terms of use.
+If programmatic price retrieval is not formally allowed, do not force an implementation; report why.
 
-【成果物】
-1. プラグインプロジェクト
-2. 実装ソースコード
-3. ビルド方法
-4. Kiribellへの導入方法
-5. 必要な設定方法
-6. 対応する銘柄コード変換ルール
-7. API利用上の制約・注意事項を記載したREADME
-8. 可能な範囲の自動テスト
+【Deliverables】
+1. Plugin project
+2. Implementation source code
+3. Build instructions
+4. Installation instructions for Kiribell
+5. Required configuration instructions
+6. Supported symbol-code conversion rules
+7. README documenting API usage limits and caveats
+8. Automated tests where practical
 
-既存のKiribell本体や公開Plugin SDKの仕様は、必要がない限り変更しないでください。
+Do not change the existing Kiribell application or public Plugin SDK specification unless necessary.
 ```
 
-## AIへ認証情報を渡さない
+## Do not give credentials to the AI
 
-APIキー、アクセストークン、証券口座のログイン情報、パスワードなどをプロンプトへ貼り付けないでください。
-
-実装中は、たとえば次のようなダミー値を使います。
+Do not paste API keys, access tokens, brokerage login details, passwords, or similar credentials into the prompt. Use a placeholder such as:
 
 ```text
 YOUR_API_KEY
 ```
 
-実際の認証情報は、完成後に利用者自身の環境で設定してください。
+Configure the real credentials in your own environment after the plugin is complete.
 
-## 生成後に最低限確認すること
+## Minimum checks after generation
 
-AIが実装を完了したら、少なくとも次を確認してください。
+After the AI completes the implementation, check at least the following:
 
-- `IPriceUpdatePublisher` の具体実装がDLL内に1つだけか
-- Kiribellが引数なしでプラグインを生成できるか
-- `StartAsync` / `SetWatches` / `StopAsync` が正しく実装されているか
-- 停止時に通信、タイマー、バックグラウンドタスクが残らないか
-- `PriceUpdateBatch.Quotes` のキーが元の `Watch.Code` になっているか
-- APIキー等がソースコード、ログ、テストデータへ残っていないか
-- APIの呼び出し頻度がレート制限を超えていないか
-- 一銘柄の失敗で取得ループ全体が停止しないか
-- エラー発生時にもKiribell本体を巻き込んで終了しないか
-- 必要な依存DLLや `.deps.json` が出力先に揃っているか
-- 対象サービスの利用規約上、その使い方が許可されているか
+- Is there exactly one concrete `IPriceUpdatePublisher` implementation in the DLL?
+- Can Kiribell instantiate the plugin without arguments?
+- Are `StartAsync` / `SetWatches` / `StopAsync` implemented correctly?
+- Do communication, timers, and background tasks stop cleanly?
+- Are keys in `PriceUpdateBatch.Quotes` the original `Watch.Code` values?
+- Are API keys and other credentials absent from source, logs, and test data?
+- Does the API call frequency stay within rate limits?
+- Does a failure for one symbol leave the retrieval loop running?
+- Does an error avoid terminating the Kiribell application?
+- Are required dependency DLLs and `.deps.json` present in the output folder?
+- Does the provider's terms of use permit this usage?
 
-## 最初の動作確認
+## First run
 
-いきなり多くの銘柄を登録せず、まず1銘柄で確認することをおすすめします。
+We recommend starting with one symbol rather than registering many at once.
 
-1. プラグインをReleaseビルドする
-2. Kiribellの **設定 → 拡張機能** でプラグインDLLを選択する
-3. **外部DLLを有効にする** をオンにする
-4. 必要なAPI設定を行う
-5. 対象となる監視銘柄を1件だけ登録する
-6. 価格更新を確認する
-7. Kiribell終了後に通信やプロセスが残っていないことを確認する
-8. 問題がなければ監視銘柄を増やす
+1. Build the plugin in Release configuration.
+2. In Kiribell, open **Settings → Extensions** and select the plugin DLL.
+3. Turn on **Enable external DLL**.
+4. Configure the required API settings.
+5. Add one applicable symbol to the watch list.
+6. Confirm that prices update.
+7. After closing Kiribell, confirm that no communication or process remains running.
+8. Add more symbols if everything works.
 
-## 参考にするサンプル
+## Sample plugins
 
-目的に応じて既存サンプルを参考にしてください。
+Use the sample that best matches your goal:
 
-- [`Kiribell.PricePlugin.Sample`](../samples/Kiribell.PricePlugin.Sample/) — 最小構成
-- [`Kiribell.PricePlugin.JsonFile.Sample`](../samples/Kiribell.PricePlugin.JsonFile.Sample/) — Kiribellとの連携確認
-- [`Kiribell.PricePlugin.TwelveData.Sample`](../samples/Kiribell.PricePlugin.TwelveData.Sample/) — HTTP API、設定画面、定期取得の参考
+- [`Kiribell.PricePlugin.Sample`](../samples/Kiribell.PricePlugin.Sample/) — minimal template
+- [`Kiribell.PricePlugin.JsonFile.Sample`](../samples/Kiribell.PricePlugin.JsonFile.Sample/) — verify integration with Kiribell
+- [`Kiribell.PricePlugin.TwelveData.Sample`](../samples/Kiribell.PricePlugin.TwelveData.Sample/) — reference for HTTP APIs, settings UI, and periodic retrieval
 
-実装仕様そのものは [価格プラグイン仕様](PLUGINS.md) を優先してください。
+For implementation requirements, follow the [price plugin specification](PLUGINS.md). Kiribell's standard Japanese stock prices are delayed by approximately 15 minutes. A plugin can supplement that limitation when a suitable broker or data service API is available, but a plugin does not guarantee real-time prices. Follow each provider's terms of use and API usage conditions.
 
-## 公開する場合
+## If you distribute the plugin
 
-自作プラグインを第三者へ配布する場合は、さらに慎重な確認が必要です。
+Review the following carefully before distributing a custom plugin to others:
 
-- 対象サービスが第三者向けツールでの利用を許可しているか
-- APIやマーケットデータの再配布に制限がないか
-- 認証情報を利用者ごとに設定する構造になっているか
-- 利用者の口座情報や個人情報を収集しないか
-- ライセンス表記が必要な依存ライブラリを使っていないか
+- Does the provider allow use in third-party tools?
+- Are there restrictions on redistribution of API or market data?
+- Are credentials configured separately by each user?
+- Does the plugin collect users' account or personal information?
+- Do any dependency libraries require license notices?
 
-KiribellのPlugin SDKがMIT Licenseであることと、接続先サービスの利用条件は別です。
+The Kiribell Plugin SDK's MIT License is separate from the terms of the connected service.
 
-## Kiribellが担当する範囲
+## What Kiribell handles
 
-Kiribellの価格プラグインは、価格情報をKiribellへ渡すための拡張ポイントです。
+Kiribell price plugins are an extension point for providing price information to Kiribell.
 
-注文、資産管理、口座操作などを行うことは前提としていません。AIへ実装を依頼するときも、必要以上の権限や機能を追加させないことをおすすめします。
+They are not intended to place orders, manage assets, or operate brokerage accounts. When asking an AI to implement a plugin, do not add unnecessary permissions or functionality.

@@ -1,20 +1,22 @@
 # Kiribell.PricePlugin.TwelveData.Sample
 
-Twelve Dataの `/quote` エンドポイントから価格を取得する実働サンプルです。`SMP.` 接頭辞の監視銘柄だけを対象にします。
+A working sample that retrieves prices from Twelve Data's `/quote` endpoint. It only handles watch-list symbols with the `SMP.` prefix.
 
-| キリベルのコード | Twelve Dataへ渡すシンボル |
+**日本語版: [README.ja.md](README.ja.md)**
+
+| Kiribell code | Symbol sent to Twelve Data |
 | --- | --- |
 | `SMP.NVDA` | `NVDA` |
 | `SMP.AAPL` | `AAPL` |
 
-プラグインは1分ごとに価格を取得し、`close`、`open`、`high`、`low`、`previous_close` をキリベルへ通知します。キリベルの **設定 → 拡張機能** でDLLを選んだ後、**プラグインを設定** から Twelve Data APIキーを入力して保存してください。キーは `ConfigurationJson` を通じてキリベルのプラグイン設定として保存されます。これは秘密情報専用の保管庫ではないため、APIキーの取り扱いは利用するサービスの要件に合わせて判断してください。
+The plugin retrieves prices once per minute and publishes `close`, `open`, `high`, `low`, and `previous_close` to Kiribell. After selecting the DLL in Kiribell's **Settings → Extensions**, choose **Configure plugin** to enter and save a Twelve Data API key. The key is saved as part of Kiribell's plugin settings through `ConfigurationJson`. This is not a vault dedicated to secrets, so handle the API key according to the requirements of the service you use.
 
 ```powershell
 dotnet build samples\Kiribell.PricePlugin.TwelveData.Sample\Kiribell.PricePlugin.TwelveData.Sample.csproj -c Release
 ```
 
-出力された `Kiribell.PricePlugin.TwelveData.Sample.dll` を **設定 → 拡張機能** から選択し、**外部DLLを有効にする** をオンにして保存します。外部ライブラリを追加して独自プラグインへ発展させた場合は、必要な依存DLLや `.deps.json` などのビルド出力もプラグインDLLと同じフォルダーに配置してください。
+Select the generated `Kiribell.PricePlugin.TwelveData.Sample.dll` in **Settings → Extensions**, turn on **Enable external DLL**, and save. If you extend it with external libraries, place the required build outputs, including dependency DLLs and `.deps.json`, in the same folder as the plugin DLL.
 
-Twelve DataのAPI利用条件、料金、レート制限、提供範囲、データの利用・再配布条件はプラン等により異なります。[公式APIドキュメント](https://twelvedata.com/docs/advanced/api-usage) を確認してください。
+Twelve Data API terms, pricing, rate limits, coverage, and data use and redistribution conditions vary by plan. See the [official API documentation](https://twelvedata.com/docs/advanced/api-usage). For external APIs, follow each provider's terms of use and API usage conditions. A price plugin does not by itself guarantee real-time data.
 
-独自プラグインへ発展させる場合は [`../../docs/Kiribell-PricePlugin-Guide.md`](../../docs/Kiribell-PricePlugin-Guide.md) も参照してください。
+To develop your own plugin, see the [price plugin development guide](../../docs/Kiribell-PricePlugin-Guide.md).

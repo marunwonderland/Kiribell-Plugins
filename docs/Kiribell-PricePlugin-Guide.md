@@ -1,127 +1,99 @@
-# Twelve Data サンプルから価格プラグインを作る
+# Build a Price Plugin from the Twelve Data Sample
 
-`Kiribell.PricePlugin.TwelveData.Sample` は、外部APIから価格を取得してKiribellへ通知する実働サンプルです。
+`Kiribell.PricePlugin.TwelveData.Sample` is a working sample that retrieves prices from an external API and publishes them to Kiribell.
 
-このサンプルをコピーして価格取得部分を書き換えることで、独自の価格プラグインを作成できます。
+Copy this sample and replace the price retrieval parts to create your own price plugin.
 
-## サンプルの `SMP.` について
+**日本語版: [Kiribell-PricePlugin-Guide.ja.md](Kiribell-PricePlugin-Guide.ja.md)**
 
-Twelve Dataサンプルでは、監視銘柄を次のように登録して動作を確認します。
+## About `SMP.` in the sample
+
+To verify the Twelve Data sample, add this watch:
 
 ```text
 SMP.NVDA
 ```
 
-この `SMP.` は、Kiribellの価格プラグインで必要な銘柄コードではありません。
+`SMP.` is not a symbol prefix required by Kiribell price plugins.
 
-**サンプルプラグインから取得した価格であることを確認しやすくするために、このサンプルだけで使用している接頭辞です。**
+**This prefix is used only by this sample to make it easy to identify prices retrieved by the sample plugin.**
 
-Kiribell本体は通常 `US.NVDA` などのコードで価格を取得します。そのまま同じ銘柄をサンプルプラグインから取得すると、本体が取得した価格とプラグインが取得した価格が同じになり、どちらから価格が反映されたのか分かりにくくなります。
+Kiribell normally retrieves prices using codes such as `US.NVDA`. If the sample plugin retrieves the same symbol under the same code, the price from Kiribell and the plugin may be identical, making it difficult to tell which one updated the display.
 
-そこでサンプルでは、
+The sample therefore works as follows:
 
 ```text
-Kiribellの監視コード    SMP.NVDA
-                          ↓
-サンプルプラグイン      NVDA に変換
-                          ↓
-Twelve Data             NVDA の価格を取得
-                          ↓
-サンプルプラグイン      SMP.NVDA として通知
-                          ↓
-Kiribell                SMP.NVDA に価格を表示
+Kiribell watch code      SMP.NVDA
+                           ↓
+Sample plugin           converts to NVDA
+                           ↓
+Twelve Data              retrieves the NVDA price
+                           ↓
+Sample plugin           publishes it as SMP.NVDA
+                           ↓
+Kiribell                 displays the price for SMP.NVDA
 ```
 
-という動作にしています。
+If a price appears for `SMP.NVDA`, you can confirm that it was retrieved by the Twelve Data sample plugin.
 
-これにより、`SMP.NVDA` に価格が表示されれば、Twelve Dataサンプルプラグインから価格が取得できていることを確認できます。
+### `SMP.` is not needed in a production plugin
 
-### 実際のプラグインでは `SMP.` は不要です
-
-独自プラグインとして実際に運用するときは、`SMP.` を使用する必要はありません。
-
-たとえば米国株をTwelve Dataから取得するプラグインとして運用するなら、
+You do not need to use `SMP.` when operating your own plugin. For example, a plugin that retrieves US stock prices from Twelve Data can receive:
 
 ```text
 US.NVDA
 ```
 
-を受け取り、
-
-```text
-US.NVDA → NVDA
-```
-
-と変換してTwelve Dataへ問い合わせます。
-
-取得した価格は、元のコードである、
-
-```text
-US.NVDA
-```
-
-に返します。
-
-つまり最終的には、
+convert it to `NVDA` for the Twelve Data request, and return the price using the original code `US.NVDA`:
 
 ```text
 US.NVDA
    ↓
-価格プラグイン
+Price plugin
    ↓
 NVDA
    ↓
-外部API
+External API
    ↓
 Quote
    ↓
 US.NVDA
 ```
 
-という形で運用するのが基本です。
-
-`SMP.` はあくまで、**サンプルプラグインが正常に動作していることを確認するための仕組み**と考えてください。
+Think of `SMP.` only as a way to verify that the sample plugin is working correctly.
 
 ---
 
-## 新しいプラグインを作る
+## Create a new plugin
 
-新しい価格プラグインを作る場合は、
+You can copy `Kiribell.PricePlugin.TwelveData.Sample` to create a new price plugin. The main parts to change are:
 
-```text
-Kiribell.PricePlugin.TwelveData.Sample
-```
+1. Plugin name
+2. Conversion from Kiribell symbol codes to API symbol codes
+3. API request
+4. Conversion of the API response into a `Quote`
 
-をコピーして使用できます。
+You can keep `StartAsync`, `SetWatches`, `StopAsync`, periodic retrieval, and publishing prices to Kiribell as they are.
 
-基本的に変更するのは次の部分です。
+## 1. Change the plugin name
 
-1. プラグイン名
-2. Kiribellの銘柄コードからAPI用コードへの変換
-3. APIへの問い合わせ
-4. APIの応答から `Quote` を作る処理
-
-`StartAsync`、`SetWatches`、`StopAsync`、定期取得、Kiribellへの価格通知などは、そのまま利用できます。
-
-## 1. プラグイン名を変更する
-
-サンプルの、
+Change the sample's name:
 
 ```csharp
 public string Name =>
     "Twelve Data 価格プラグイン サンプル";
 ```
 
-を変更します。
+For example:
 
 ```csharp
 public string Name =>
     "My Price Plugin";
 ```
 
-## 2. 銘柄コードの変換を変更する
+## 2. Change symbol conversion
 
-サンプルでは、動作確認のため `SMP.` を取り除いてTwelve Dataへ問い合わせています。
+For verification, the sample removes `SMP.` before requesting data from Twelve Data:
 
 ```csharp
 private static string? ToTwelveDataSymbol(string code)
@@ -137,29 +109,11 @@ private static string? ToTwelveDataSymbol(string code)
 }
 ```
 
-そのため、
+Thus, `SMP.NVDA` becomes `NVDA`.
 
-```text
-SMP.NVDA → NVDA
-```
+### Change it for production use
 
-となります。
-
-### 実運用用に変更する
-
-たとえばKiribellの米国株コード、
-
-```text
-US.NVDA
-```
-
-をTwelve Dataの、
-
-```text
-NVDA
-```
-
-として取得するなら、この部分を次のように変更できます。
+For example, to retrieve the Kiribell US stock code `US.NVDA` as `NVDA` from Twelve Data, change the code as follows:
 
 ```csharp
 private static string? ToTwelveDataSymbol(string code)
@@ -175,35 +129,15 @@ private static string? ToTwelveDataSymbol(string code)
 }
 ```
 
-これだけで、
+This enables retrieval for `US.NVDA → NVDA`, `US.AAPL → AAPL`, and `US.MSFT → MSFT`.
 
-```text
-US.NVDA → NVDA
-US.AAPL → AAPL
-US.MSFT → MSFT
-```
+**This is the first part to change when turning the sample into a plugin for actual use.**
 
-のように取得できるようになります。
+For another price API, convert the code to the format required by that API. For example, `JP.7203 → 7203.T` is also valid. The code sent to the API and the code returned to Kiribell can be different.
 
-**サンプルを実際のプラグインとして使用するときに、まず変更するのがこの部分です。**
+## 3. Change the API request
 
-別の価格APIを使用する場合は、そのAPIが要求する銘柄コードへ変換してください。
-
-たとえば、
-
-```text
-JP.7203 → 7203.T
-```
-
-のような変換でも構いません。
-
-重要なのは、APIへ問い合わせるコードとKiribellへ返すコードは別に考えられるという点です。
-
-## 3. APIへの問い合わせを変更する
-
-実際に価格を取得しているのは `FetchQuoteAsync` です。
-
-Twelve Dataサンプルでは、
+`FetchQuoteAsync` retrieves the price. The Twelve Data sample makes its request as follows:
 
 ```csharp
 var url =
@@ -215,15 +149,11 @@ using var response =
     await Http.GetAsync(url, token);
 ```
 
-としてTwelve Dataへ問い合わせています。
+You do not need to change this part if you continue using Twelve Data. To use another price service, replace it with that service's API call. Follow the service's terms of use and API usage conditions; availability, pricing, limits, and latency depend on the service and plan.
 
-Twelve Dataをそのまま利用する場合、この部分は変更する必要はありません。
+## 4. Convert API values into a `Quote`
 
-別の価格サービスを利用する場合は、この部分をそのサービスのAPI呼び出しへ置き換えます。
-
-## 4. APIの値を `Quote` へ変換する
-
-Twelve Dataから取得したJSONは、`FetchQuoteAsync` の中でKiribellの `Quote` へ変換しています。
+The Twelve Data JSON is converted to Kiribell's `Quote` inside `FetchQuoteAsync`:
 
 ```csharp
 return (
@@ -236,117 +166,49 @@ return (
     string.Empty);
 ```
 
-`Quote` の各値は、
+The `Quote` values, in order, are `LastPrice`, `OpenPrice`, `TodayHigh`, `TodayLow`, and `PreviousClose`. For another API, update this part to match the field names in its JSON response.
 
-```text
-LastPrice
-OpenPrice
-TodayHigh
-TodayLow
-PreviousClose
-```
+## 5. Keep the part that returns prices to Kiribell
 
-の順です。
-
-別のAPIを利用する場合は、そのAPIが返すJSONの項目名に合わせて、この部分を変更します。
-
-## 5. Kiribellへ価格を返す部分は変更しない
-
-取得した価格は `FetchAllAsync` で次のように格納されています。
+`FetchAllAsync` stores a retrieved quote as follows:
 
 ```csharp
 if (result.Quote is { } quote)
     quotes[watch.Code] = quote;
 ```
 
-ここでは、APIへ問い合わせた `symbol` ではなく、**Kiribellから受け取った元の `watch.Code` を使用します。**
-
-たとえば、
-
-```text
-US.NVDA
-   ↓
-NVDAとしてAPIへ問い合わせ
-   ↓
-価格取得
-```
-
-した場合でも、Kiribellへ返すのは、
+This uses the original `watch.Code` received from Kiribell, **not** the `symbol` sent to the API. For example, even if `US.NVDA` is sent to the API as `NVDA`, return the quote as:
 
 ```csharp
 quotes["US.NVDA"] = quote;
 ```
 
-です。
-
-この部分は変更しないでください。
+Do not change this part.
 
 ---
 
-## Twelve Dataをそのまま使うなら、実はほとんど完成しています
+## The sample is nearly ready if you want to keep using Twelve Data
 
-Twelve Dataを実際の価格取得先として使用する場合、サンプルにはすでに、
+The sample already implements API requests, JSON parsing, `Quote` creation, retrieval every minute, watch-list changes, error notifications, an API key settings screen, saving settings, and start/stop handling.
 
-- APIへの問い合わせ
-- JSONの解析
-- `Quote` の作成
-- 1分ごとの定期取得
-- 監視銘柄変更への対応
-- エラー通知
-- APIキー設定画面
-- 設定の保存
-- 開始・停止処理
-
-が実装されています。
-
-そのため、米国株をTwelve Dataから取得するだけなら、主な変更は、
+To retrieve US stocks from Twelve Data, the main change is to replace:
 
 ```csharp
 const string prefix = "SMP.";
 ```
 
-を、
+with:
 
 ```csharp
 const string prefix = "US.";
 ```
 
-へ変更することです。
+This changes the sample mapping `SMP.NVDA → NVDA → Twelve Data` into a plugin mapping `US.NVDA → NVDA → Twelve Data`, `US.AAPL → AAPL → Twelve Data`, and `US.MSFT → MSFT → Twelve Data`.
 
-これで、
+For another price service, also adapt the API request in `FetchQuoteAsync` and conversion of the response into a `Quote`.
 
-```text
-サンプル
+## Summary
 
-SMP.NVDA → NVDA → Twelve Data
-```
+`Kiribell.PricePlugin.TwelveData.Sample` is not just a demonstration; you can use it as a base for your own price plugin. If you continue using Twelve Data, start by **changing `SMP.` to the market code you actually use**.
 
-から、
-
-```text
-実運用
-
-US.NVDA → NVDA → Twelve Data
-US.AAPL → AAPL → Twelve Data
-US.MSFT → MSFT → Twelve Data
-```
-
-というプラグインへ変更できます。
-
-別の価格サービスを使用したい場合は、さらに `FetchQuoteAsync` のAPI呼び出しと `Quote` への変換部分を、そのサービスに合わせて変更してください。
-
-## まとめ
-
-`Kiribell.PricePlugin.TwelveData.Sample` は、単に動作を見るだけのサンプルではなく、独自価格プラグインを作るためのベースとして利用できます。
-
-Twelve Dataをそのまま使用するなら、
-
-**`SMP.` を実際に使用する市場コードへ変更する**
-
-ところから始められます。
-
-別の価格サービスを利用する場合でも、
-
-**銘柄コード変換 → API呼び出し → `Quote` への変換**
-
-の3か所を中心に変更すれば、Kiribellとの基本的な連携処理はそのまま利用できます。
+For another price service, you can keep the basic Kiribell integration and focus your changes on **symbol conversion → API request → conversion to `Quote`**.

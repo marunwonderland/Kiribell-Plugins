@@ -1,14 +1,16 @@
 # Kiribell.PricePlugin.JsonFile.Sample
 
-キリベルの価格プラグインが正しく更新されるかを確認するための、実働サンプルです。DLLと同じフォルダーにある `prices.json` を2秒ごとに読み、内容を `PricesUpdated` で通知します。
+A working sample for verifying that Kiribell price plugins update correctly. It reads `prices.json` from the same folder as the DLL every two seconds and publishes its contents through `PricesUpdated`.
+
+**日本語版: [README.ja.md](README.ja.md)**
 
 ```powershell
 dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.JsonFile.Sample.csproj -c Release
 ```
 
-ビルド出力フォルダーの `Kiribell.PricePlugin.JsonFile.Sample.dll` をキリベルで選択します。同じフォルダーの `prices.json` をテキストエディターで編集して保存します。プラグインは2秒ごとにファイルを読み、本体は5秒ごとに最新の通知を画面へ反映します。
+Select `Kiribell.PricePlugin.JsonFile.Sample.dll` from the build output folder in Kiribell. Edit and save `prices.json` in the same folder using a text editor. The plugin reads the file every two seconds; Kiribell displays the latest notification every five seconds.
 
-`prices.json` は、銘柄コードをキーにしたJSONオブジェクトです。キーがキリベルの監視銘柄コードと一致した項目だけを反映します。
+`prices.json` is a JSON object keyed by symbol code. Only entries whose keys match Kiribell watch-list codes are applied.
 
 ```json
 {
@@ -22,6 +24,6 @@ dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.J
 }
 ```
 
-このサンプルには、開始・停止、監視銘柄変更、非同期ファイルI/O、部分更新、エラー通知の実装が含まれます。
+This sample includes start/stop handling, watch-list changes, asynchronous file I/O, partial updates, and error notifications.
 
-詳しいAPI契約は [`../../docs/PLUGINS.md`](../../docs/PLUGINS.md) を参照してください。
+See the [plugin API contract](../../docs/PLUGINS.md) for details.

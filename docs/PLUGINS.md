@@ -1,22 +1,24 @@
-# キリベル価格プラグイン
+# Kiribell Price Plugin
 
-キリベルは、設定で選択したDLLから価格プラグインを読み込みます。価格の取得時刻と間隔はプラグイン側で決め、取得結果を本体へ通知します。プラグイン用の公開APIは [`../src/StockBeacon.PluginContracts/IPriceUpdatePublisher.cs`](../src/StockBeacon.PluginContracts/IPriceUpdatePublisher.cs) にあります。
+Kiribell loads a price plugin from the DLL selected in Settings. The plugin determines when and how often to retrieve prices, then notifies the application of the results. The public plugin API is defined in [`../src/StockBeacon.PluginContracts/IPriceUpdatePublisher.cs`](../src/StockBeacon.PluginContracts/IPriceUpdatePublisher.cs).
 
-## 作成と配置
+**日本語版: [PLUGINS.ja.md](PLUGINS.ja.md)**
 
-初めて動作を確認する場合は、[`Kiribell.PricePlugin.JsonFile.Sample`](../samples/Kiribell.PricePlugin.JsonFile.Sample/) を使います。これはDLLと同じフォルダーの `prices.json` を2秒ごとに読み、価格を通知する実働サンプルです。ファイルの価格を書き換えると、プラグインの通知と本体の反映を確認できます。
+## Creating and installing a plugin
 
-外部APIを呼ぶ実装例は、[`Kiribell.PricePlugin.TwelveData.Sample`](../samples/Kiribell.PricePlugin.TwelveData.Sample/) です。監視リストの `SMP.NVDA` を Twelve Data の `NVDA` として取得し、同じ `SMP.NVDA` に価格を返します。APIキーの設定方法と、定期取得・エラー通知を含んでいます。
+For an initial check, use [`Kiribell.PricePlugin.JsonFile.Sample`](../samples/Kiribell.PricePlugin.JsonFile.Sample/). This working sample reads `prices.json` from the same folder as the DLL every two seconds and publishes prices. Edit a price in the file to verify plugin notifications and updates in Kiribell.
 
-[`Kiribell.PricePlugin.Sample`](../samples/Kiribell.PricePlugin.Sample/) は、取得処理を持たない最小の雛形です。新しいプラグインを作るときの出発点として使います。
+For an implementation that calls an external API, see [`Kiribell.PricePlugin.TwelveData.Sample`](../samples/Kiribell.PricePlugin.TwelveData.Sample/). It looks up the watch-list code `SMP.NVDA` as `NVDA` in Twelve Data and returns the price under the original code `SMP.NVDA`. It includes API key configuration, periodic retrieval, and error notifications.
+
+[`Kiribell.PricePlugin.Sample`](../samples/Kiribell.PricePlugin.Sample/) is a minimal template with no retrieval logic. Use it as a starting point for a new plugin.
 
 ```powershell
 dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.JsonFile.Sample.csproj -c Release
 ```
 
-出力先の `bin\Release\net10.0\` にある `Kiribell.PricePlugin.JsonFile.Sample.dll` を選択します。キリベルの **設定 → 拡張機能** でDLLを選び、**外部DLLを有効にする** をオンにして保存します。監視リストに `JP.7203` または `US.AAPL` を追加し、同じフォルダーの `prices.json` にある `LastPrice` を編集して保存してください。プラグインは2秒ごとにファイルを読み、本体は5秒ごとに最新の通知を反映します。
+Select `Kiribell.PricePlugin.JsonFile.Sample.dll` in the output folder `bin\Release\net10.0\`. In Kiribell, open **Settings → Extensions**, select the DLL, turn on **Enable external DLL**, and save. Add `JP.7203` or `US.AAPL` to the watch list, then edit `LastPrice` in `prices.json` in the same folder and save. The plugin reads the file every two seconds; Kiribell applies the latest notification every five seconds.
 
-サンプルと同様に、プラグインは `StockBeacon.PluginContracts` を参照します。
+As in the samples, reference `StockBeacon.PluginContracts` from your plugin.
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -31,11 +33,11 @@ dotnet build samples\Kiribell.PricePlugin.JsonFile.Sample\Kiribell.PricePlugin.J
 </Project>
 ```
 
-DLLには、`StockBeacon.PluginContracts` を参照する `IPriceUpdatePublisher` 実装を一つだけ入れてください。本体は抽象ではない実装を数え、0件なら「`IPriceUpdatePublisher 実装が見つかりません`」、2件以上なら「`IPriceUpdatePublisher 実装はDLL内に一つだけ配置してください`」として読み込みを中止します。
+Include exactly one implementation of `IPriceUpdatePublisher` that references `StockBeacon.PluginContracts` in the DLL. Kiribell counts concrete implementations: if it finds none, loading stops with `IPriceUpdatePublisher 実装が見つかりません`; if it finds two or more, loading stops with `IPriceUpdatePublisher 実装はDLL内に一つだけ配置してください`.
 
-選ばれた型を生成できない場合、プラグインの読み込みは失敗します。たとえば引数なしコンストラクターがない場合は `MissingMethodException` が発生します。設定画面には「プラグインの読み込みに失敗しました: <例外メッセージ>」と表示され、ログには `Plugin Load Error` と例外の詳細が記録されます。
+If Kiribell cannot instantiate the selected type, plugin loading fails. For example, the type must have a parameterless constructor or `MissingMethodException` is thrown. The settings screen displays `プラグインの読み込みに失敗しました: <例外メッセージ>`, and the log records `Plugin Load Error` with exception details.
 
-## プラグイン用API
+## Plugin API
 
 ```csharp
 namespace Kiribell.Plugins;
@@ -74,61 +76,61 @@ public interface ISettingsPricePlugin
 }
 ```
 
-`IPriceUpdatePublisher` は必須です。`IConfigurablePricePlugin` と `ISettingsPricePlugin` は必要な場合だけ追加します。
+`IPriceUpdatePublisher` is required. Add `IConfigurablePricePlugin` and `ISettingsPricePlugin` only when needed.
 
-## 本体とのやり取り
+## Communication with Kiribell
 
-アプリの読み込み時と、設定を保存してプラグインを有効にしたときに、本体は `StartAsync` を呼びます。引数はテストデータを除く全監視銘柄です。銘柄の追加、編集、削除の後には `SetWatches` を呼びます。アプリ終了時、および設定保存時には `StopAsync` を呼びます。これらの呼び出しに、本体は `CancellationToken` を指定しません。
+Kiribell calls `StartAsync` when the application loads and when the plugin is enabled by saving settings. Its argument contains all watch-list symbols except test data. Kiribell calls `SetWatches` after symbols are added, edited, or removed. It calls `StopAsync` when the application exits and when settings are saved. Kiribell does not pass a `CancellationToken` to these calls.
 
-プラグインは任意の時刻・間隔で価格を取得し、`PricesUpdated` を発火します。本体には5秒間隔の確認タイマーがあり、その時点で保持している最新の `PriceUpdateBatch` を取り出して反映します。このタイマーはプラグインに価格取得を指示しません。
+The plugin retrieves prices at any times and intervals and raises `PricesUpdated`. Kiribell has a five-second polling timer that takes and applies the latest `PriceUpdateBatch` held at that time. This timer does not ask the plugin to retrieve prices.
 
-本体は受け取った `PriceUpdateBatch` を一件だけ保持します。新しいバッチの `ObtainedAt` が保持中のものより新しい場合だけ置き換え、反映時に取り出して消去します。同じ時刻または過去の時刻のバッチは捨てられます。
+Kiribell holds only one received `PriceUpdateBatch`. It replaces the held batch only when the new batch's `ObtainedAt` is later than the held batch's timestamp. When applying a batch, Kiribell removes it from the holding slot. Batches with the same or an earlier timestamp are discarded.
 
-## 価格の通知
+## Publishing prices
 
-`Watch.Code` はキリベルに保存されている監視銘柄コードです。サービスへの問い合わせ用にコードを変換しても構いませんが、`PriceUpdateBatch.Quotes` のキーには入力された `Watch.Code` を使います。本体は、各監視銘柄について `Quotes.TryGetValue(row.Code, …)` で価格を探します。見つからない銘柄は更新しません。
+`Watch.Code` is the watch-list code stored in Kiribell. You may convert it to a code required by a service, but keys in `PriceUpdateBatch.Quotes` must use the original `Watch.Code` received from Kiribell. For each watch, Kiribell looks up a quote with `Quotes.TryGetValue(row.Code, …)`. A watch with no matching key is not updated.
 
-| 値 | 本体の動作 |
+| Value | Behavior in Kiribell |
 | --- | --- |
-| `LastPrice` | 返された銘柄の現在値として反映します。 |
-| `OpenPrice` | 値があり、当日分の始値が未反映（始値の市場日付が当日ではない、または始値が0以下）で、かつ平日の市場開始時刻以降の場合だけ反映します。市場開始時刻は `JP` が日本時間9:00、`US` が米国東部時間9:30、`HK` が中国時間9:30です。これ以外のコードではプラグインから始値を反映しません。 |
-| `TodayHigh` / `TodayLow` | 値がある場合だけ反映します。 |
-| `PreviousClose` | 値がある場合だけ前日終値として反映します。 |
+| `LastPrice` | Applied as the current price for the matching symbol. |
+| `OpenPrice` | Applied only when a value is provided, the current day's open has not already been applied (the open's market date is not today or the open is 0 or less), and it is after the market open on a weekday. Market open is 9:00 Japan time for `JP`, 9:30 US Eastern time for `US`, and 9:30 China time for `HK`. Plugins cannot apply an open price for other codes. |
+| `TodayHigh` / `TodayLow` | Applied only when a value is provided. |
+| `PreviousClose` | Applied as the previous close only when a value is provided. |
 
-価格が反映された銘柄はプラグイン価格を所有する状態になり、通常の価格更新では現在値・始値・高値・安値を更新しなくなります。通常の価格更新は前日終値の更新だけを続けます。
+Once a symbol receives a plugin price, the plugin owns its price state: regular price updates no longer update its current, open, high, or low prices. Regular updates continue to update only the previous close.
 
-本体は、候補の現在値が対象銘柄の直前の現在値から50%以上離れ、かつ別の監視銘柄の現在値と一致する場合、その銘柄への反映を保留します。OCRなどで行が入れ替わったときの誤反映を防ぐための判定です。
+Kiribell defers applying a candidate current price if it is at least 50% away from the symbol's immediately preceding current price and matches the current price of another watch-list symbol. This check helps prevent applying a price to the wrong symbol when OCR, for example, causes rows to move.
 
-`Error` は `null` 以外ならプラグインエラーとして画面に表示します。空文字列も `null` ではないため、エラーとして扱われます。`Error` があっても、`Quotes` に入っている価格は反映します。
+If `Error` is not `null`, Kiribell displays it as a plugin error. An empty string is also an error because it is not `null`. Prices in `Quotes` are applied even when `Error` is present.
 
-## プラグイン設定
+## Plugin settings
 
-`IConfigurablePricePlugin` を実装すると、DLLの読み込み直後に保存済みの `ConfigurationJson` が設定されます。値はキリベルの設定として、DLLの絶対パスごとに保存されます。別のDLLへ切り替えても、そのDLLの設定値は変更しません。同じDLLへ戻すと、そのDLL用に保存した値が渡されます。
+When a DLL implementing `IConfigurablePricePlugin` is loaded, Kiribell sets its saved `ConfigurationJson` immediately after loading. The value is saved in Kiribell settings per absolute DLL path. Switching to another DLL does not change that DLL's saved configuration; selecting the original DLL again supplies its saved value.
 
-設定画面を出す場合は、`ISettingsPricePlugin` を実装します。本体は設定画面のボタン操作から `ShowSettings` を呼びます。
+Implement `ISettingsPricePlugin` to show a settings screen. Kiribell calls `ShowSettings` when the user presses the settings button.
 
 ```csharp
 public bool ShowSettings(nint ownerWindowHandle)
 ```
 
-呼び出し結果が `true` で、かつ `IConfigurablePricePlugin` も実装している場合だけ、`ConfigurationJson` を読み出して保存します。`false` の場合は設定値を保存しません。`ISettingsPricePlugin` を実装していない場合は「選択したDLLは設定画面に対応していません」と表示します。
+Kiribell reads and saves `ConfigurationJson` only if the call returns `true` and the plugin also implements `IConfigurablePricePlugin`. If it returns `false`, settings are not saved. If the plugin does not implement `ISettingsPricePlugin`, Kiribell displays `選択したDLLは設定画面に対応していません`.
 
-## エラーとログ
+## Errors and logs
 
-キリベルの **設定 → 拡張機能 → エラーログ** で **エラーをログファイルへ保存する** をオンにすると、DLLの読み込み・開始・停止・設定画面の例外と、プラグインが `PriceUpdateBatch.Error` で通知したエラーを次のファイルへ記録します。
+In Kiribell, open **Settings → Extensions → Error Log** and turn on **Save errors to log file** to record DLL load, start, stop, and settings-screen exceptions, along with errors reported by the plugin through `PriceUpdateBatch.Error`. The log is written to:
 
 ```text
 %LOCALAPPDATA%\Kiribell\Data\error.log
 ```
 
-Debug ビルドでは既定でオン、Release ビルドでは既定でオフです。プラグイン内部の自律更新中に起きた失敗を画面とログへ伝えるには、`PriceUpdateBatch.Error` に設定して通知します。
+This option is on by default in Debug builds and off by default in Release builds. To report failures that occur during a plugin's autonomous update loop to the screen and log, set `PriceUpdateBatch.Error` and publish the batch.
 
-## DLLに関する補足
+## DLL notes
 
-本体はプラグインごとに読み込み領域を分けます。設定保存時に現在のプラグインを停止した後であれば、同じアセンブリ名の別のプラグインDLLへ切り替えられます。
+Kiribell uses a separate load context for each plugin. After stopping the current plugin during settings save, you can switch to another plugin DLL with the same assembly name.
 
-## 付属の実装
+## Included implementations
 
-- [`Kiribell.PricePlugin.JsonFile.Sample`](../samples/Kiribell.PricePlugin.JsonFile.Sample/) は、ファイルから価格を取得する実働サンプルです。
-- [`Kiribell.PricePlugin.TwelveData.Sample`](../samples/Kiribell.PricePlugin.TwelveData.Sample/) は、外部APIから価格を取得する実働サンプルです。`SMP.NVDA` のように `SMP.` を付けたコードを対象とし、APIキーはプラグイン設定画面から入力します。
-- [`Kiribell.PricePlugin.Sample`](../samples/Kiribell.PricePlugin.Sample/) は、取得処理を持たない最小の雛形です。
+- [`Kiribell.PricePlugin.JsonFile.Sample`](../samples/Kiribell.PricePlugin.JsonFile.Sample/) is a working sample that reads prices from a file.
+- [`Kiribell.PricePlugin.TwelveData.Sample`](../samples/Kiribell.PricePlugin.TwelveData.Sample/) is a working sample that retrieves prices from an external API. It handles codes prefixed with `SMP.`, such as `SMP.NVDA`, and accepts the API key in the plugin settings screen. External API access remains subject to the provider's terms and API usage conditions; data latency and availability depend on the provider and plan.
+- [`Kiribell.PricePlugin.Sample`](../samples/Kiribell.PricePlugin.Sample/) is a minimal template with no retrieval logic.
